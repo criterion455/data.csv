@@ -20,40 +20,19 @@
 (def ^{:private true} cr  (int \return))
 (def ^{:private true} eof -1)
 
-(defn- read-quoted-cell [^PushbackReader reader ^StringBuilder sb sep quote]
-  (loop [ch (.read reader)]
-    (condp == ch
-      quote (let [next-ch (.read reader)]
-              (condp == next-ch
-                quote (do (.append sb (char quote))
-                          (recur (.read reader)))
-                sep :sep
-                lf  :eol
-                cr  (let [next-next-ch (.read reader)]
-                      (when (not= next-next-ch lf)
-                        (.unread reader next-next-ch))
-                      :eol)
-                eof :eof
-                (throw (Exception. ^String (format "CSV error (unexpected character: %c)" next-ch)))))
-      eof (throw (EOFException. "CSV error (unexpected end of file)"))
-      (do (.append sb (char ch))
-          (recur (.read reader))))))
-
 (defn- read-cell [^PushbackReader reader ^StringBuilder sb sep quote]
   (let [first-ch (.read reader)]
-    (if (== first-ch quote)
-      (read-quoted-cell reader sb sep quote)
-      (loop [ch first-ch]
-        (condp == ch
-          sep :sep
-          lf  :eol
-          cr (let [next-ch (.read reader)]
-               (when (not= next-ch lf)
-                 (.unread reader next-ch))
-               :eol)
-          eof :eof
-          (do (.append sb (char ch))
-              (recur (.read reader))))))))
+    (loop [ch first-ch]
+      (condp == ch
+        sep :sep
+        lf  :eol
+        cr (let [next-ch (.read reader)]
+             (when (not= next-ch lf)
+               (.unread reader next-ch))
+             :eol)
+        eof :eof
+        (do (.append sb (char ch))
+            (recur (.read reader)))))))
 
 (defn- read-record [reader sep quote]
   (loop [record (transient [])]
